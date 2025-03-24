@@ -1,0 +1,45 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Page Not Found - Spotify Analytics{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-6 mx-auto text-center">
+            <div class="mb-4">
+                <i class="fas fa-record-vinyl fa-5x text-spotify animate-spin"></i>
+            </div>
+            <h1 class="display-4 mb-4">404</h1>
+            <h2 class="h4 mb-4">Oops! The track you're looking for isn't in our playlist.</h2>
+            <p class="text-muted mb-4">
+                The page you're trying to access doesn't exist or has been moved.
+                Don't worry, there's still plenty of great music to discover!
+            </p>
+            <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
+                <a href="{% url 'core:home' %}" class="btn btn-spotify">
+                    <i class="fas fa-home me-2"></i>Back to Home
+                </a>
+                <a href="{% url 'core:trends' %}" class="btn btn-outline-spotify">
+                    <i class="fas fa-chart-line me-2"></i>Explore Trends
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @keyframes spin {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
+    
+    .animate-spin {
+        animation: spin 4s linear infinite;
+    }
+</style>
+{% endblock %}

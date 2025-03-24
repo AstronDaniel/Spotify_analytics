@@ -1,0 +1,602 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Music Trends - Spotify Analytics{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row mb-5">
+        <div class="col-lg-8 mx-auto text-center">
+            <h1 class="mb-4">Global Music Trends</h1>
+            <p class="lead">
+                Discover what's trending in the music world. Our analytics provide real-time insights
+                into popular genres, artists, and musical characteristics.
+            </p>
+        </div>
+    </div>
+
+    <!-- Genre Distribution -->
+    <div class="card mb-5 trend-card">
+        <div class="card-header bg-spotify text-white d-flex justify-content-between align-items-center">
+            <h2 class="h4 mb-0">Genre Distribution</h2>
+            <button class="btn btn-sm btn-outline-light" data-bs-toggle="collapse" data-bs-target="#genreDescription" aria-expanded="false">
+                <i class="fas fa-info-circle"></i> Learn More
+            </button>
+        </div>
+        <div class="collapse" id="genreDescription">
+            <div class="card-body bg-light">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Understanding Genre Distribution</h5>
+                        <p>This chart shows the percentage breakdown of popular music genres based on current listening trends. The size of each segment represents how prevalent that genre is in today's music landscape.</p>
+                        <div class="alert alert-info">
+                            <strong>How to interpret:</strong> Larger segments indicate more popular genres. This data is collected from trending playlists and recent releases.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-8">
+                    <canvas id="genreDistributionChart" height="300"></canvas>
+                </div>
+                <div class="col-lg-4">
+                    <div id="genreLegend" class="mt-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio Features Overview -->
+    <div class="card mb-5 trend-card">
+        <div class="card-header bg-spotify text-white d-flex justify-content-between align-items-center">
+            <h2 class="h4 mb-0">Average Audio Features</h2>
+            <button class="btn btn-sm btn-outline-light" data-bs-toggle="collapse" data-bs-target="#audioFeaturesDescription" aria-expanded="false">
+                <i class="fas fa-info-circle"></i> Learn More
+            </button>
+        </div>
+        <div class="collapse" id="audioFeaturesDescription">
+            <div class="card-body bg-light">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Understanding Audio Features</h5>
+                        <p>This radar chart displays the average values of Spotify's audio features across trending music. Each attribute is measured on a scale from 0.0 to 1.0.</p>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="card mb-2 feature-explainer">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Danceability</h6>
+                                        <p class="card-text">How suitable a track is for dancing based on tempo, rhythm stability, beat strength, and overall regularity.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-2 feature-explainer">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Energy</h6>
+                                        <p class="card-text">Represents intensity and activity. Energetic tracks feel fast, loud, and noisy.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-2 feature-explainer">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Valence</h6>
+                                        <p class="card-text">The musical positiveness conveyed by a track. High valence sounds more positive (happy, cheerful).</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-2 feature-explainer">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Acousticness</h6>
+                                        <p class="card-text">A confidence measure of whether the track is acoustic (non-electronic).</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-2 feature-explainer">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Instrumentalness</h6>
+                                        <p class="card-text">Predicts whether a track contains no vocals. Higher values represent instrumental tracks.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-2 feature-explainer">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Speechiness & Liveness</h6>
+                                        <p class="card-text">Speechiness detects spoken words. Liveness detects presence of audience (live recording).</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <canvas id="audioFeaturesChart" height="300"></canvas>
+                </div>
+                <div class="col-lg-4 mx-auto d-flex align-items-center">
+                    <div id="featuresStats" class="w-100">
+                        <!-- Will be populated with feature stats -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popular Artists -->
+    <div class="card mb-5 trend-card">
+        <div class="card-header bg-spotify text-white d-flex justify-content-between align-items-center">
+            <h2 class="h4 mb-0">Trending Artists</h2>
+            <div class="d-flex">
+                <button class="btn btn-sm btn-outline-light me-2" data-bs-toggle="collapse" data-bs-target="#artistDescription" aria-expanded="false">
+                    <i class="fas fa-info-circle"></i> Learn More
+                </button>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-outline-light btn-sm active" data-period="weekly">This Week</button>
+                    <button type="button" class="btn btn-outline-light btn-sm" data-period="monthly">This Month</button>
+                </div>
+            </div>
+        </div>
+        <div class="collapse" id="artistDescription">
+            <div class="card-body bg-light">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Understanding Trending Artists</h5>
+                        <p>This section highlights artists who are currently performing well on the charts and across streaming platforms. Artists are ranked based on their recent popularity scores, which consider streaming numbers, chart positions, and social media engagement.</p>
+                        <div class="alert alert-info">
+                            <strong>How to interpret:</strong> Artists are listed with their primary genres and a popularity score (out of 100). This data is refreshed from Spotify's latest charts and trending releases.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="trendingArtists" class="row g-4">
+                <div class="col-12 text-center">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mood Analysis -->
+    <div class="card mb-5 trend-card">
+        <div class="card-header bg-spotify text-white d-flex justify-content-between align-items-center">
+            <h2 class="h4 mb-0">Global Mood Analysis</h2>
+            <button class="btn btn-sm btn-outline-light" data-bs-toggle="collapse" data-bs-target="#moodDescription" aria-expanded="false">
+                <i class="fas fa-info-circle"></i> Learn More
+            </button>
+        </div>
+        <div class="collapse" id="moodDescription">
+            <div class="card-body bg-light">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Understanding Mood Analysis</h5>
+                        <p>This chart visualizes the emotional characteristics of current popular music. Our algorithm analyzes audio features to determine the overall mood of trending tracks.</p>
+                        <div class="alert alert-info">
+                            <strong>How to interpret:</strong> The radar chart shows five mood dimensions, where higher values indicate stronger presence of that mood in current music trends. The insights panel provides additional context about these mood trends.
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="card mb-2 feature-explainer">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Happy vs. Melancholic</h6>
+                                        <p class="card-text">Derived primarily from valence and energy values. Happy music tends to have higher valence.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card mb-2 feature-explainer">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Energetic vs. Relaxed</h6>
+                                        <p class="card-text">Based on energy and acousticness. Energetic tracks have high energy and low acousticness.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-6">
+                    <canvas id="moodChart" height="300"></canvas>
+                </div>
+                <div class="col-lg-6">
+                    <div class="p-4">
+                        <h3 class="h5 mb-4">Current Mood Trends</h3>
+                        <div id="moodAnalysis">
+                            <div class="loading-spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tempo Distribution -->
+    <div class="card mb-5 trend-card">
+        <div class="card-header bg-spotify text-white d-flex justify-content-between align-items-center">
+            <h2 class="h4 mb-0">Tempo Distribution</h2>
+            <button class="btn btn-sm btn-outline-light" data-bs-toggle="collapse" data-bs-target="#tempoDescription" aria-expanded="false">
+                <i class="fas fa-info-circle"></i> Learn More
+            </button>
+        </div>
+        <div class="collapse" id="tempoDescription">
+            <div class="card-body bg-light">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Understanding Tempo Distribution</h5>
+                        <p>This chart shows the distribution of song tempos (speed) measured in Beats Per Minute (BPM) across currently trending music.</p>
+                        <div class="alert alert-info">
+                            <strong>How to interpret:</strong> 
+                            <ul class="mb-0">
+                                <li><60-80 BPM: Slow, relaxed music (ballads, slow jams)</li>
+                                <li>80-100 BPM: Moderate tempo (many pop songs)</li>
+                                <li>100-120 BPM: Upbeat, danceable</li>
+                                <li>120-140 BPM: Fast-paced dance music</li>
+                                <li>140+ BPM: Very fast (EDM, drum and bass)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <canvas id="tempoChart" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Call to Action -->
+    <div class="text-center mt-5">
+        <h3 class="h4 mb-4">Want to see your personal trends?</h3>
+        {% if not user.is_authenticated %}
+            <a href="{% url 'core:spotify-login' %}" class="btn btn-spotify btn-lg">
+                <i class="fab fa-spotify me-2"></i>Connect with Spotify
+            </a>
+        {% else %}
+            <a href="{% url 'core:dashboard' %}" class="btn btn-spotify btn-lg">
+                <i class="fas fa-chart-line me-2"></i>View Your Analytics
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .trend-card {
+        border: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+    }
+    
+    .trend-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+    
+    .feature-explainer {
+        border-left: 4px solid #1DB954;
+        transition: all 0.2s ease;
+    }
+    
+    .feature-explainer:hover {
+        transform: translateX(5px);
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .feature-stat-item {
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 10px;
+        background-color: #f8f9fa;
+        border-left: 4px solid #1DB954;
+        transition: all 0.2s ease;
+    }
+    
+    .feature-stat-item:hover {
+        background-color: #f0f2f5;
+        transform: translateX(3px);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        // Fetch trends data using our SpotifyApi instance
+        const trends = await spotifyApi.getTrends();
+        
+        // Update charts with null checks
+        if (trends.genre_distribution && Object.keys(trends.genre_distribution).length > 0) {
+            updateGenreDistribution(trends.genre_distribution);
+        } else {
+            document.getElementById('genreDistributionChart').parentNode.innerHTML = 
+                '<div class="alert alert-info">No genre distribution data available.</div>';
+        }
+        
+        if (trends.audio_features && typeof trends.audio_features === 'object') {
+            updateAudioFeatures(trends.audio_features);
+        } else {
+            document.getElementById('audioFeaturesChart').parentNode.innerHTML = 
+                '<div class="alert alert-info">No audio features data available.</div>';
+        }
+        
+        if (trends.trending_artists && trends.trending_artists.length > 0) {
+            updateTrendingArtists(trends.trending_artists);
+        } else {
+            document.getElementById('trendingArtists').innerHTML = 
+                '<div class="col-12"><div class="alert alert-info">No trending artists data available.</div></div>';
+        }
+        
+        if (trends.mood_analysis && trends.mood_analysis.metrics) {
+            updateMoodAnalysis(trends.mood_analysis);
+        } else {
+            document.getElementById('moodChart').parentNode.innerHTML = 
+                '<div class="alert alert-info">No mood analysis data available.</div>';
+            document.getElementById('moodAnalysis').innerHTML = 
+                '<div class="alert alert-info">No mood analysis insights available.</div>';
+        }
+        
+        if (trends.tempo_distribution && Object.keys(trends.tempo_distribution).length > 0) {
+            updateTempoDistribution(trends.tempo_distribution);
+        } else {
+            document.getElementById('tempoChart').parentNode.innerHTML = 
+                '<div class="alert alert-info">No tempo distribution data available.</div>';
+        }
+        
+    } catch (error) {
+        console.error('Failed to load trends:', error);
+        document.querySelectorAll('.loading-spinner').forEach(spinner => {
+            spinner.parentElement.innerHTML = `
+                <div class="alert alert-danger">
+                    Failed to load trend data. Please try again later.
+                </div>
+            `;
+        });
+    }
+});
+
+function updateGenreDistribution(data) {
+    const ctx = document.getElementById('genreDistributionChart').getContext('2d');
+    chartConfigs.createGenreChart(ctx, {
+        labels: Object.keys(data),
+        values: Object.values(data)
+    });
+    
+    // Update legend
+    const legend = document.getElementById('genreLegend');
+    legend.innerHTML = Object.entries(data)
+        .map(([genre, value]) => `
+            <div class="d-flex align-items-center mb-2">
+                <div class="me-2" style="width: 20px; height: 20px; background-color: ${
+                    chartConfigs.colors[Object.keys(data).indexOf(genre) % chartConfigs.colors.length]
+                };"></div>
+                <span>${genre}: ${value}%</span>
+            </div>
+        `)
+        .join('');
+}
+
+function updateAudioFeatures(data) {
+    // Add validation to ensure data is valid before attempting to create the chart
+    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+        console.warn('Invalid audio features data');
+        const container = document.getElementById('audioFeaturesChart').parentNode;
+        container.innerHTML = '<div class="alert alert-info">No audio features data available.</div>';
+        return;
+    }
+    
+    const ctx = document.getElementById('audioFeaturesChart').getContext('2d');
+    chartConfigs.createFeaturesChart(ctx, data);
+    
+    // Update feature stats with detailed information
+    const statsContainer = document.getElementById('featuresStats');
+    
+    // Sort features from highest to lowest value for better visualization
+    const sortedFeatures = Object.entries(data).sort((a, b) => b[1] - a[1]);
+    
+    statsContainer.innerHTML = `
+        <h5 class="mb-3">Feature Highlights</h5>
+        ${sortedFeatures.map(([feature, value]) => `
+            <div class="feature-stat-item">
+                <div class="d-flex justify-content-between">
+                    <strong>${feature.charAt(0).toUpperCase() + feature.slice(1)}</strong>
+                    <span class="badge bg-spotify">${(value * 100).toFixed(0)}%</span>
+                </div>
+                <div class="progress mt-2" style="height: 6px;">
+                    <div class="progress-bar bg-spotify" style="width: ${value * 100}%" 
+                         role="progressbar" aria-valuenow="${value}" 
+                         aria-valuemin="0" aria-valuemax="1"></div>
+                </div>
+            </div>
+        `).join('')}
+        
+        <div class="mt-3 text-center">
+            <button class="btn btn-sm btn-outline-spotify" 
+                    data-bs-toggle="collapse" 
+                    data-bs-target="#audioFeaturesDescription">
+                <i class="fas fa-info-circle me-1"></i> Learn What These Mean
+            </button>
+        </div>
+    `;
+}
+
+function updateTrendingArtists(artists) {
+    const container = document.getElementById('trendingArtists');
+    container.innerHTML = artists.map(artist => `
+        <div class="col-md-3">
+            <div class="card h-100 trend-card">
+                <img src="${artist.image || '/static/img/default-artist.png'}"
+                     class="card-img-top"
+                     alt="${artist.name}">
+                <div class="card-body text-center">
+                    <h5 class="card-title">${artist.name}</h5>
+                    <p class="card-text text-muted">
+                        ${artist.genres.slice(0, 2).join(', ')}
+                    </p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">Popularity</small>
+                        <div class="progress" style="width: 60%">
+                            <div class="progress-bar bg-spotify"
+                                 role="progressbar"
+                                 style="width: ${artist.popularity}%"
+                                 aria-valuenow="${artist.popularity}"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100">
+                                ${artist.popularity}%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateMoodAnalysis(data) {
+    const ctx = document.getElementById('moodChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: Object.keys(data.metrics),
+            datasets: [{
+                label: 'Current Mood',
+                data: Object.values(data.metrics),
+                backgroundColor: 'rgba(29, 185, 84, 0.2)',
+                borderColor: '#1DB954',
+                pointBackgroundColor: '#1DB954'
+            }]
+        },
+        options: {
+            ...chartConfigs.commonOptions,
+            scales: {
+                r: {
+                    angleLines: { color: 'rgba(255, 255, 255, 0.2)' },
+                    grid: { color: 'rgba(255, 255, 255, 0.2)' },
+                    pointLabels: { 
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
+                    ticks: { 
+                        backdropColor: 'transparent',
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+    const analysis = document.getElementById('moodAnalysis');
+    analysis.innerHTML = `
+        <p class="lead mb-4">${data.summary}</p>
+        <div class="card bg-light">
+            <div class="card-body">
+                <h6 class="card-subtitle mb-3 text-muted">Key Insights</h6>
+                <ul class="list-group list-group-flush">
+                    ${Object.entries(data.insights)
+                        .map(([key, value]) => `
+                            <li class="list-group-item bg-transparent">
+                                <i class="fas fa-chart-line text-spotify me-2"></i>
+                                <strong>${key}:</strong> ${value}
+                            </li>
+                        `)
+                        .join('')}
+                </ul>
+            </div>
+        </div>
+    `;
+}
+
+function updateTempoDistribution(data) {
+    const ctx = document.getElementById('tempoChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(data),
+            datasets: [{
+                label: 'Distribution (%)',
+                data: Object.values(data),
+                backgroundColor: [
+                    'rgba(29, 185, 84, 0.3)',
+                    'rgba(29, 185, 84, 0.5)',
+                    'rgba(29, 185, 84, 0.7)',
+                    'rgba(29, 185, 84, 0.8)',
+                    'rgba(29, 185, 84, 0.9)',
+                    'rgba(29, 185, 84, 1.0)'
+                ],
+                borderColor: '#1DB954',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            ...chartConfigs.commonOptions,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Percentage (%)'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Tempo Range (BPM)'
+                    }
+                }
+            },
+            plugins: {
+                ...chartConfigs.commonOptions.plugins,
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `${context.raw}% of trending tracks`
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Initialize all info tooltips
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(tooltip => {
+    new bootstrap.Tooltip(tooltip);
+});
+
+// Initialize collapsible sections
+document.querySelectorAll('.collapse').forEach(collapse => {
+    collapse.addEventListener('shown.bs.collapse', () => {
+        const button = document.querySelector(`[data-bs-target="#${collapse.id}"]`);
+        if (button) {
+            button.innerHTML = '<i class="fas fa-times"></i> Close';
+        }
+    });
+    
+    collapse.addEventListener('hidden.bs.collapse', () => {
+        const button = document.querySelector(`[data-bs-target="#${collapse.id}"]`);
+        if (button) {
+            button.innerHTML = '<i class="fas fa-info-circle"></i> Learn More';
+        }
+    });
+});
+</script>
+{% endblock %}

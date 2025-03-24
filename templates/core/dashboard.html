@@ -1,0 +1,383 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Your Dashboard - Spotify Analytics{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    {% if not user.is_spotify_linked %}
+        <!-- Spotify Connection Required -->
+        <div class="alert alert-info" role="alert">
+            <h4 class="alert-heading"><i class="fab fa-spotify"></i> Connect Your Spotify Account</h4>
+            <p>To see your personalized analytics, please connect your Spotify account.</p>
+            <hr>
+            <a href="{% url 'core:spotify-login' %}" class="btn btn-spotify">
+                <i class="fab fa-spotify me-2"></i>Connect with Spotify
+            </a>
+        </div>
+    {% else %}
+        <!-- User Analytics Dashboard -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <h1 class="mb-4">Your Music Analytics</h1>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="dashboard-stat">
+                    <h3>Playlists</h3>
+                    <div id="playlistCount" class="h2 mb-0 text-spotify">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="dashboard-stat">
+                    <h3>Top Genre</h3>
+                    <div id="topGenre" class="h2 mb-0 text-spotify">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="dashboard-stat">
+                    <h3>Tracks Analyzed</h3>
+                    <div id="tracksAnalyzed" class="h2 mb-0 text-spotify">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="dashboard-stat">
+                    <h3>Total Duration</h3>
+                    <div id="totalDuration" class="h2 mb-0 text-spotify">
+                        <div class="loading-spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-spotify text-white">
+                        <h3 class="card-title mb-0">Recent Activity</h3>
+                    </div>
+                    <div class="card-body" id="recentActivity">
+                        <div class="loading-spinner mx-auto"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="row g-4">
+            <!-- Genre Distribution -->
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <div class="chart-header mb-3">
+                        <h3 class="h5">Your Genre Distribution</h3>
+                        <button class="btn btn-sm btn-outline-spotify" 
+                                type="button" 
+                                data-bs-toggle="collapse" 
+                                data-bs-target="#genreDescription">
+                            <i class="fas fa-info-circle"></i> About This Chart
+                        </button>
+                    </div>
+                    <div class="collapse mb-3" id="genreDescription">
+                        <div class="card border-spotify">
+                            <div class="card-body">
+                                <h6 class="card-subtitle mb-2 text-spotify">Understanding Your Music Preferences</h6>
+                                <p class="mb-2">This chart shows how your music library breaks down by genre. Each segment represents a different genre, with its size indicating the percentage of tracks in that category.</p>
+                                <ul class="list-unstyled small">
+                                    <li><i class="fas fa-circle text-spotify me-2"></i>Larger segments indicate your preferred genres</li>
+                                    <li><i class="fas fa-circle text-spotify me-2"></i>Hover over segments to see exact percentages</li>
+                                    <li><i class="fas fa-circle text-spotify me-2"></i>Click on genres in the legend to show/hide them</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="genreChartContainer">
+                        <canvas id="genreDistribution" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audio Features -->
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <div class="chart-header mb-3">
+                        <h3 class="h5">Average Audio Features</h3>
+                        <button class="btn btn-sm btn-outline-spotify" 
+                                type="button" 
+                                data-bs-toggle="collapse" 
+                                data-bs-target="#featuresDescription">
+                            <i class="fas fa-info-circle"></i> About These Metrics
+                        </button>
+                    </div>
+                    <div class="collapse mb-3" id="featuresDescription">
+                        <div class="card border-spotify">
+                            <div class="card-body">
+                                <h6 class="card-subtitle mb-2 text-spotify">Audio Characteristics Explained</h6>
+                                <p class="mb-3">This radar chart displays various audio characteristics of your music, each measured on a scale from 0 to 1:</p>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <ul class="list-unstyled small feature-list">
+                                            <li>
+                                                <strong class="d-block">Danceability</strong>
+                                                <span class="text-muted">How suitable the music is for dancing</span>
+                                            </li>
+                                            <li>
+                                                <strong class="d-block">Energy</strong>
+                                                <span class="text-muted">The intensity and activity level</span>
+                                            </li>
+                                            <li>
+                                                <strong class="d-block">Valence</strong>
+                                                <span class="text-muted">The musical positiveness conveyed</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <ul class="list-unstyled small feature-list">
+                                            <li>
+                                                <strong class="d-block">Acousticness</strong>
+                                                <span class="text-muted">Confidence of being acoustic</span>
+                                            </li>
+                                            <li>
+                                                <strong class="d-block">Instrumentalness</strong>
+                                                <span class="text-muted">Predicts if a track has no vocals</span>
+                                            </li>
+                                            <li>
+                                                <strong class="d-block">Liveness</strong>
+                                                <span class="text-muted">Presence of a live audience</span>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="featuresChartContainer">
+                        <canvas id="audioFeatures" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Playlists -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <h3 class="mb-4">Your Recent Playlists</h3>
+                <div class="row g-4" id="recentPlaylists">
+                    <div class="loading-spinner mx-auto"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Artists -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-spotify text-white d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0">Your Top Artists</h3>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-outline-light btn-sm" data-range="short_term">4 Weeks</button>
+                            <button type="button" class="btn btn-outline-light btn-sm active" data-range="medium_term">6 Months</button>
+                            <button type="button" class="btn btn-outline-light btn-sm" data-range="long_term">All Time</button>
+                        </div>
+                    </div>
+                    <div class="card-body" id="topArtists">
+                        <div class="loading-spinner mx-auto"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+
+<script>
+// Wait for either DOMContentLoaded or mainJsLoaded, whichever comes last
+// This ensures spotifyApi is available before we try to use it
+function initializeDashboard() {
+    if (document.querySelector('#genreDistribution')) {
+        try {
+            // Fetch user analytics
+            spotifyApi.getUserAnalytics()
+                .then(analytics => {
+                    // Update quick stats
+                    updateQuickStats(analytics);
+                    
+                    // Check if genre_distribution exists and has data
+                    if (analytics.genre_distribution && Object.keys(analytics.genre_distribution).length > 0) {
+                        // Update charts
+                        updateGenreDistribution(analytics.genre_distribution);
+                    } else {
+                        // Show empty state message
+                        document.getElementById('genreChartContainer').innerHTML = 
+                            '<div class="alert alert-info mt-3">No genre data available yet. Listen to more music to see your genre distribution.</div>';
+                    }
+                    
+                    // Check if audio_features exists and has data
+                    if (analytics.audio_features && Object.values(analytics.audio_features).some(val => val > 0)) {
+                        // Update charts
+                        updateAudioFeatures(analytics.audio_features);
+                    } else {
+                        // Show empty state message
+                        document.getElementById('featuresChartContainer').innerHTML = 
+                            '<div class="alert alert-info mt-3">No audio features data available yet.</div>';
+                    }
+                    
+                    // Update recent playlists
+                    updateRecentPlaylists(analytics.playlists);
+                    
+                    // Update top artists
+                    updateTopArtists(analytics.top_artists);
+                    
+                    // Update recent activity
+                    updateRecentActivity(analytics.recent_activity);
+                })
+                .catch(error => {
+                    console.error('Failed to load dashboard data:', error);
+                    document.querySelectorAll('.loading-spinner').forEach(spinner => {
+                        spinner.parentElement.innerHTML = `
+                            <div class="alert alert-danger">
+                                Failed to load data. Please try again later.
+                            </div>
+                        `;
+                    });
+                });
+        } catch (error) {
+            console.error('Error initializing dashboard:', error);
+        }
+    }
+}
+
+// Check if document is already loaded
+if (document.readyState === 'loading') {
+    // If not, add event listener for when it's done loading
+    document.addEventListener('DOMContentLoaded', () => {
+        // Check if spotifyApi is already available
+        if (window.spotifyApi) {
+            initializeDashboard();
+        } else {
+            // If not, wait for mainJsLoaded event
+            document.addEventListener('mainJsLoaded', initializeDashboard);
+        }
+    });
+} else {
+    // Document already loaded, check if spotifyApi is available
+    if (window.spotifyApi) {
+        initializeDashboard();
+    } else {
+        // If not, wait for mainJsLoaded event
+        document.addEventListener('mainJsLoaded', initializeDashboard);
+    }
+}
+
+// Utility functions specific to dashboard
+function updateQuickStats(data) {
+    document.getElementById('playlistCount').textContent = spotifyUtils.formatNumber(data.playlist_count || 0);
+    document.getElementById('topGenre').textContent = data.top_genre || 'Not enough data';
+    document.getElementById('tracksAnalyzed').textContent = spotifyUtils.formatNumber(data.tracks_analyzed || 0);
+    document.getElementById('totalDuration').textContent = spotifyUtils.formatDuration(data.total_duration_ms || 0);
+}
+
+function updateRecentPlaylists(playlists) {
+    const container = document.getElementById('recentPlaylists');
+    
+    if (!playlists || playlists.length === 0) {
+        container.innerHTML = '<div class="col-12"><div class="alert alert-info">No playlists available yet.</div></div>';
+        return;
+    }
+    
+    container.innerHTML = playlists.map(playlist => `
+        <div class="col-md-4">
+            <div class="playlist-card">
+                <img src="${playlist.images[0]?.url || '/static/img/default-playlist.png'}" 
+                     alt="${playlist.name}" class="img-fluid">
+                <div class="playlist-overlay">
+                    <h4>${playlist.name}</h4>
+                    <p>${playlist.tracks.total} tracks</p>
+                    <a href="/app/playlist/${playlist.id}/"
+                       class="btn btn-spotify btn-sm">
+                        Analyze
+                    </a>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateTopArtists(artists) {
+    const container = document.getElementById('topArtists');
+    
+    if (!artists || artists.length === 0) {
+        container.innerHTML = '<div class="alert alert-info">No artist data available yet.</div>';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="row">
+            ${artists.map(artist => `
+                <div class="col-md-3 mb-4">
+                    <div class="text-center">
+                        <img src="${artist.images[0]?.url || '/static/img/default-artist.png'}"
+                             alt="${artist.name}"
+                             class="rounded-circle mb-2"
+                             width="150"
+                             height="150">
+                        <h5>${artist.name}</h5>
+                        <p class="text-muted">${(artist.genres && artist.genres.slice(0, 2).join(', ')) || 'No genre data'}</p>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+function updateRecentActivity(activity) {
+    const container = document.getElementById('recentActivity');
+    
+    if (!activity || activity.length === 0) {
+        container.innerHTML = '<div class="alert alert-info">No recent activity to display.</div>';
+        return;
+    }
+    
+    container.innerHTML = `
+        <div class="list-group">
+            ${activity.map(item => `
+                <div class="list-group-item">
+                    <div class="d-flex align-items-center">
+                        ${item.album_image ? `<img src="${item.album_image}" alt="Album cover" class="me-3" style="width: 50px; height: 50px;">` : ''}
+                        <div>
+                            <h5 class="mb-1">${item.track_name || 'Unknown Track'}</h5>
+                            <p class="mb-1">${item.artist_name || 'Unknown Artist'}</p>
+                            <small class="text-muted">Played at: ${formatPlayedAt(item.played_at)}</small>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+// Helper function to format the played_at timestamp
+function formatPlayedAt(timestamp) {
+    if (!timestamp) return 'Unknown time';
+    
+    try {
+        const date = new Date(timestamp);
+        return date.toLocaleString();
+    } catch (e) {
+        return timestamp;
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% load static %}
+
+<div class="loading-overlay">
+    <div class="loading-content">
+        <div class="spinner-wrapper">
+            <i class="fab fa-spotify fa-spin"></i>
+        </div>
+        <p class="loading-text">{{ message|default:"Loading..." }}</p>
+    </div>
+</div>
+
+<style>
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(25, 20, 20, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    backdrop-filter: blur(5px);
+}
+
+.loading-content {
+    text-align: center;
+    color: white;
+}
+
+.spinner-wrapper {
+    margin-bottom: 1rem;
+}
+
+.fa-spotify.fa-spin {
+    font-size: 4rem;
+    color: #1DB954;
+    animation: spotify-spin 2s infinite linear;
+}
+
+.loading-text {
+    font-size: 1.2rem;
+    margin: 0;
+    font-weight: 500;
+}
+
+@keyframes spotify-spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Custom loading messages */
+.loading-content[data-type="analyzing"] .loading-text::after {
+    content: '';
+    animation: analyzing-dots 1.5s infinite;
+}
+
+@keyframes analyzing-dots {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+    100% { content: ''; }
+}
+</style>
+
+<script>
+function showLoading(message = 'Loading...', type = '') {
+    const overlay = document.createElement('div');
+    overlay.innerHTML = `
+        <div class="loading-overlay">
+            <div class="loading-content" data-type="${type}">
+                <div class="spinner-wrapper">
+                    <i class="fab fa-spotify fa-spin"></i>
+                </div>
+                <p class="loading-text">${message}</p>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay.firstElementChild);
+}
+
+function hideLoading() {
+    const overlay = document.querySelector('.loading-overlay');
+    if (overlay) {
+        overlay.addEventListener('transitionend', () => overlay.remove());
+        overlay.style.opacity = '0';
+    }
+}
+
+// Example usage:
+// showLoading('Analyzing playlist...', 'analyzing');
+// setTimeout(hideLoading, 3000);
+</script>

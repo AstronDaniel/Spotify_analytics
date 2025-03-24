@@ -1,0 +1,121 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}About - Spotify Analytics{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <h1 class="text-center mb-5">About Spotify Analytics</h1>
+            
+            <div class="card mb-5">
+                <div class="card-body">
+                    <h2 class="card-title h4">Our Mission</h2>
+                    <p class="card-text">
+                        Spotify Analytics aims to provide music enthusiasts with deep insights into their music preferences
+                        and listening habits. We leverage the power of data analytics to help you understand your musical
+                        journey and discover new perspectives about your favorite music.
+                    </p>
+                </div>
+            </div>
+
+            <div class="row g-4 mb-5">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h3 class="card-title h5">For Music Lovers</h3>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>Analyze your playlists</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Discover listening patterns</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Explore genre distributions</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Track your music journey</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h3 class="card-title h5">For Playlist Curators</h3>
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success me-2"></i>Get detailed playlist insights</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Analyze audio features</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Understand mood patterns</li>
+                                <li><i class="fas fa-check text-success me-2"></i>Share playlist analytics</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-5">
+                <div class="card-body">
+                    <h2 class="card-title h4">How It Works</h2>
+                    <div class="row g-4">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fab fa-spotify fa-3x text-spotify mb-3"></i>
+                                <h4 class="h6">Connect</h4>
+                                <p class="small">Link your Spotify account</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-sync fa-3x text-spotify mb-3"></i>
+                                <h4 class="h6">Analyze</h4>
+                                <p class="small">Process your music data</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-chart-line fa-3x text-spotify mb-3"></i>
+                                <h4 class="h6">Visualize</h4>
+                                <p class="small">See your insights</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <i class="fas fa-share-alt fa-3x text-spotify mb-3"></i>
+                                <h4 class="h6">Share</h4>
+                                <p class="small">Share your discoveries</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-5">
+                <div class="card-body">
+                    <h2 class="card-title h4">Privacy & Security</h2>
+                    <p class="card-text">
+                        We take your privacy seriously. Our platform only accesses the Spotify data you choose to share,
+                        and you can control what information is public or private. We use industry-standard security
+                        measures to protect your data.
+                    </p>
+                    <p class="card-text mb-0">
+                        <small class="text-muted">
+                            For more information, please read our
+                            <a href="#" class="text-spotify">Privacy Policy</a> and
+                            <a href="#" class="text-spotify">Terms of Service</a>.
+                        </small>
+                    </p>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <h3 class="h4 mb-4">Ready to explore your music?</h3>
+                {% if not user.is_authenticated %}
+                    <a href="{% url 'core:spotify-login' %}" class="btn btn-spotify btn-lg">
+                        <i class="fab fa-spotify me-2"></i>Connect with Spotify
+                    </a>
+                {% else %}
+                    <a href="{% url 'core:dashboard' %}" class="btn btn-spotify btn-lg">
+                        <i class="fas fa-chart-line me-2"></i>Go to Dashboard
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

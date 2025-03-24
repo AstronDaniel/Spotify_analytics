@@ -1,0 +1,195 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}Spotify Analytics - Discover Your Music Insights{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero text-center">
+    <div class="container">
+        <h1>Discover Your Music DNA</h1>
+        <p class="lead mb-4">Unlock deep insights about your music taste, analyze playlists, and explore trends with our powerful analytics platform.</p>
+        {% if not user.is_authenticated %}
+            <a href="{% url 'core:spotify-login' %}" class="btn btn-spotify btn-lg">
+                <i class="fab fa-spotify me-2"></i>Connect with Spotify
+            </a>
+        {% else %}
+            <a href="{% url 'core:dashboard' %}" class="btn btn-spotify btn-lg">
+                <i class="fas fa-chart-line me-2"></i>Go to Dashboard
+            </a>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="container my-5">
+    <h2 class="text-center mb-5">Powerful Analytics Features</h2>
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-pie fa-3x text-spotify mb-3"></i>
+                    <h3>Playlist Analysis</h3>
+                    <p>Deep dive into your playlists with detailed genre distribution, audio features, and mood analysis.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-wave-square fa-3x text-spotify mb-3"></i>
+                    <h3>Music Trends</h3>
+                    <p>Explore current music trends, popular genres, and discover emerging artists in real-time.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-user-circle fa-3x text-spotify mb-3"></i>
+                    <h3>Personal Insights</h3>
+                    <p>Get personalized insights about your listening habits and music preferences.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Public Trends Preview -->
+<section class="bg-light py-5">
+    <div class="container">
+        <h2 class="text-center mb-5">Trending Now</h2>
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h3>Global Genre Distribution</h3>
+                            <a href="{% url 'core:trends' %}" class="btn btn-spotify">View All Trends</a>
+                        </div>
+                        <div id="chartContainer" style="height: 300px; position: relative;">
+                            <div id="loadingSpinner" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; z-index: 100;">
+                                <div class="spinner-border text-spotify" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                            <canvas id="genreChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Rest of sections... -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    console.clear();
+    console.log('Initializing chart...');
+
+    function hideLoadingSpinner() {
+        console.log('Attempting to hide loading spinner...');
+        const spinner = document.getElementById('loadingSpinner');
+        if (spinner) {
+            spinner.style.opacity = '0';
+            setTimeout(() => {
+                spinner.style.display = 'none';
+                console.log('Loading spinner hidden');
+            }, 500);
+        } else {
+            console.warn('Loading spinner element not found');
+        }
+    }
+
+    function showError(message) {
+        console.error('Showing error:', message);
+        const container = document.getElementById('chartContainer');
+        if (container) {
+            container.innerHTML = `
+                <div class="alert alert-danger m-3">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    ${message}
+                </div>
+            `;
+        }
+    }
+
+    async function initializeChart() {
+        try {
+            console.log('Fetching data from API...');
+            const response = await fetch('/api/trends/');
+            console.log('API response status:', response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('Data received:', data);
+
+            const canvas = document.getElementById('genreChart');
+            if (!canvas) {
+                throw new Error('Canvas element not found');
+            }
+
+            console.log('Creating chart...');
+            new Chart(canvas, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(data.genre_distribution),
+                    datasets: [{
+                        data: Object.values(data.genre_distribution),
+                        backgroundColor: [
+                            '#1DB954',
+                            '#1ED760',
+                            '#2EBD59',
+                            '#57B660',
+                            '#78B159'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 1000,
+                        onComplete: () => {
+                            console.log('Chart animation complete');
+                            hideLoadingSpinner();
+                        }
+                    }
+                }
+            });
+            
+            console.log('Chart initialization complete');
+
+        } catch (error) {
+            console.error('Error creating chart:', error);
+            hideLoadingSpinner();
+            showError('Failed to load chart data. Please try again later.');
+        }
+    }
+
+    // Initialize chart when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeChart);
+    } else {
+        initializeChart();
+    }
+})();
+</script>
+{% endblock %}

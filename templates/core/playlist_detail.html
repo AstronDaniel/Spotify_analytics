@@ -1,0 +1,394 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% load music_tags %}
+
+{% block title %}Playlist Analysis - Spotify Analytics{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-5">
+    <div class="row">
+        <!-- Playlist Info Sidebar -->
+        <div class="col-lg-3">
+            <div class="card sticky-top" style="top: 2rem;">
+                <img src="{{ playlist.image_url|default:'/static/img/default-playlist.png' }}" 
+                     class="card-img-top" 
+                     alt="{{ playlist.name }}">
+                <div class="card-body">
+                    <h1 class="h4 card-title">{{ playlist.name }}</h1>
+                    <p class="text-muted">
+                        {{ playlist.tracks_total }} tracks ·
+                        {{ playlist.total_duration_ms|format_duration_long }}
+                    </p>
+                    <div class="d-grid gap-2">
+                        <a href="{{ playlist.spotify_url }}" 
+                           class="btn btn-spotify"
+                           target="_blank">
+                            <i class="fab fa-spotify me-2"></i>Open in Spotify
+                        </a>
+                        {% if user == playlist.owner %}
+                            <button class="btn btn-outline-spotify" 
+                                    onclick="refreshAnalysis()">
+                                <i class="fas fa-sync-alt me-2"></i>Refresh Analysis
+                            </button>
+                            <div class="form-check form-switch mt-3">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="playlistPublic"
+                                       {% if playlist.is_public %}checked{% endif %}
+                                       onchange="togglePublic()">
+                                <label class="form-check-label" for="playlistPublic">
+                                    Make analysis public
+                                </label>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Analysis Content -->
+        <div class="col-lg-9">
+            <!-- Quick Stats -->
+            <div class="row g-4 mb-5">
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="text-muted mb-2">Average Popularity</h6>
+                            <h3 class="mb-0">{{ analysis.popularity.average|format_popularity }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="text-muted mb-2">Dominant Genre</h6>
+                            <h3 class="mb-0">{{ analysis.genres.dominant }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="text-muted mb-2">Average Tempo</h6>
+                            <h3 class="mb-0">{{ analysis.audio_features.tempo|floatformat:0 }} BPM</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h6 class="text-muted mb-2">Unique Artists</h6>
+                            <h3 class="mb-0">{{ analysis.artists.unique_count }}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Genre Distribution -->
+            <div class="card mb-5">
+                <div class="card-header bg-spotify text-white">
+                    <h2 class="h5 mb-0">Genre Distribution</h2>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <canvas id="genreChart" height="300"></canvas>
+                        </div>
+                        <div class="col-lg-4">
+                            <div id="genreLegend" class="mt-4"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Audio Features -->
+            <div class="card mb-5">
+                <div class="card-header bg-spotify text-white">
+                    <h2 class="h5 mb-0">Audio Features Analysis</h2>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <canvas id="featuresChart" height="300"></canvas>
+                        </div>
+                        <div class="col-lg-6">
+                            <h3 class="h6 mb-4">Feature Descriptions</h3>
+                            <div class="feature-descriptions">
+                                {% for feature, value in analysis.audio_features.items %}
+                                    {% if feature != 'tempo' and feature != 'duration_ms' %}
+                                        <div class="mb-3">
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <strong>{{ feature|title }}</strong>
+                                                <span>{{ value|floatformat:2 }}</span>
+                                            </div>
+                                            <div class="progress">
+                                                <div class="progress-bar bg-spotify" 
+                                                     role="progressbar" 
+                                                     style="width: {{ value|percentage:1 }}"
+                                                     aria-valuenow="{{ value }}"
+                                                     aria-valuemin="0"
+                                                     aria-valuemax="1">
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">
+                                                {% audio_feature_description feature %}
+                                            </small>
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Track List -->
+            <div class="card mb-5">
+                <div class="card-header bg-spotify text-white d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">Tracks Analysis</h2>
+                    <div class="btn-group">
+                        <button type="button" 
+                                class="btn btn-outline-light btn-sm active"
+                                onclick="sortTracks('name')">Name</button>
+                        <button type="button" 
+                                class="btn btn-outline-light btn-sm"
+                                onclick="sortTracks('popularity')">Popularity</button>
+                        <button type="button" 
+                                class="btn btn-outline-light btn-sm"
+                                onclick="sortTracks('tempo')">Tempo</button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="tracksTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Track</th>
+                                    <th>Artist</th>
+                                    <th>Duration</th>
+                                    <th>Popularity</th>
+                                    <th>Key</th>
+                                    <th>BPM</th>
+                                    <th>Energy</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for track in analysis.tracks %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>
+                                        <a href="{{ track.spotify_url }}" 
+                                           class="text-decoration-none"
+                                           target="_blank">
+                                            {{ track.name }}
+                                        </a>
+                                    </td>
+                                    <td>{{ track.artist_name }}</td>
+                                    <td>{{ track.duration_ms|format_duration }}</td>
+                                    <td>{{ track.popularity }}</td>
+                                    <td>{{ track.key|format_key }} {{ track.mode|format_mode }}</td>
+                                    <td>{{ track.tempo|floatformat:0 }}</td>
+                                    <td>
+                                        <div class="progress" style="height: 6px;">
+                                            <div class="progress-bar bg-spotify" 
+                                                 role="progressbar" 
+                                                 style="width: {{ track.energy|percentage:1 }}"
+                                                 aria-valuenow="{{ track.energy }}"
+                                                 aria-valuemin="0"
+                                                 aria-valuemax="1">
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Modified initialization that checks for spotifyApi availability
+function initializePlaylistDetail() {
+    // Initialize charts
+    initializeCharts();
+    
+    // Initialize tooltips
+    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltips.forEach(tooltip => new bootstrap.Tooltip(tooltip));
+}
+
+// Check if document is already loaded
+if (document.readyState === 'loading') {
+    // If not, add event listener for when it's done loading
+    document.addEventListener('DOMContentLoaded', initializePlaylistDetail);
+} else {
+    // Document already loaded
+    initializePlaylistDetail();
+}
+
+async function refreshAnalysis() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    const loadingHtml = '<i class="fas fa-spinner fa-spin me-2"></i>Analyzing...';
+    
+    try {
+        button.disabled = true;
+        button.innerHTML = loadingHtml;
+
+        const response = await fetch(`/api/playlists/{{ playlist.id }}/refresh/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}',
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            throw new Error(data.message || `Failed to refresh analysis: ${response.statusText}`);
+        }
+
+        // Add success alert
+        const successDiv = document.createElement('div');
+        successDiv.className = 'alert alert-success alert-dismissible fade show mt-3';
+        successDiv.innerHTML = `
+            <i class="fas fa-check-circle me-2"></i>
+            Analysis refreshed successfully! Reloading page...
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        button.parentNode.insertBefore(successDiv, button.nextSibling);
+
+        // Reload after a short delay to show the success message
+        setTimeout(() => window.location.reload(), 1500);
+    } catch (error) {
+        console.error('Error:', error);
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show mt-3';
+        alertDiv.innerHTML = `
+            <i class="fas fa-exclamation-circle me-2"></i>
+            ${error.message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        button.parentNode.insertBefore(alertDiv, button.nextSibling);
+        button.disabled = false;
+        button.innerHTML = originalText;
+
+        // Auto-dismiss error after 5 seconds
+        setTimeout(() => {
+            const bsAlert = new bootstrap.Alert(alertDiv);
+            bsAlert.close();
+        }, 5000);
+    }
+}
+
+async function togglePublic() {
+    try {
+        const response = await fetch(`/api/playlists/{{ playlist_id }}/public/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': '{{ csrf_token }}'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to update visibility');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to update visibility. Please try again.');
+        // Reset checkbox to original state
+        document.getElementById('playlistPublic').checked = {{ playlist.is_public|yesno:'true,false' }};
+    }
+}
+
+function initializeCharts() {
+    // Genre Distribution Chart
+    const genreCtx = document.getElementById('genreChart').getContext('2d');
+    const genreData = {{ analysis.genres.distribution|default:'{}'|safe }};
+    
+    // Check if we have valid data before creating the chart
+    if (genreData && Object.keys(genreData).length > 0) {
+        chartConfigs.createGenreChart(genreCtx, {
+            labels: Object.keys(genreData),
+            values: Object.values(genreData)
+        });
+    } else {
+        // Display a message if no data is available
+        const genreContainer = document.getElementById('genreChart').parentNode;
+        genreContainer.innerHTML = '<div class="alert alert-info">No genre data available for this playlist.</div>';
+    }
+
+    // Audio Features Chart
+    const featuresCtx = document.getElementById('featuresChart').getContext('2d');
+    const featuresData = {
+        danceability: {{ analysis.audio_features.danceability|default:0 }},
+        energy: {{ analysis.audio_features.energy|default:0 }},
+        speechiness: {{ analysis.audio_features.speechiness|default:0 }},
+        acousticness: {{ analysis.audio_features.acousticness|default:0 }},
+        instrumentalness: {{ analysis.audio_features.instrumentalness|default:0 }},
+        liveness: {{ analysis.audio_features.liveness|default:0 }},
+        valence: {{ analysis.audio_features.valence|default:0 }}
+    };
+    
+    // Check if we have valid data (at least one non-zero value)
+    const hasAudioFeatures = Object.values(featuresData).some(value => value > 0);
+    
+    if (hasAudioFeatures) {
+        chartConfigs.createFeaturesChart(featuresCtx, featuresData);
+    } else {
+        // Display a message if no data is available
+        const featuresContainer = document.getElementById('featuresChart').parentNode;
+        featuresContainer.innerHTML = '<div class="alert alert-info">No audio features available for this playlist.</div>';
+    }
+}
+
+function sortTracks(criterion) {
+    const table = document.getElementById('tracksTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    rows.sort((a, b) => {
+        let aVal, bVal;
+        
+        switch(criterion) {
+            case 'name':
+                aVal = a.cells[1].textContent;
+                bVal = b.cells[1].textContent;
+                return aVal.localeCompare(bVal);
+            
+            case 'popularity':
+                aVal = parseInt(a.cells[4].textContent);
+                bVal = parseInt(b.cells[4].textContent);
+                return bVal - aVal;
+            
+            case 'tempo':
+                aVal = parseFloat(a.cells[6].textContent);
+                bVal = parseFloat(b.cells[6].textContent);
+                return bVal - aVal;
+        }
+    });
+
+    // Clear and refill tbody
+    tbody.innerHTML = '';
+    rows.forEach((row, index) => {
+        row.cells[0].textContent = index + 1;
+        tbody.appendChild(row);
+    });
+
+    // Update active button
+    document.querySelectorAll('.btn-group .btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+}
+</script>
+{% endblock %}

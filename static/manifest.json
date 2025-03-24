@@ -1,0 +1,36 @@
+{
+    "name": "Spotify Analytics",
+    "short_name": "SpotifyStats",
+    "description": "Deep insights into your music preferences and listening patterns",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#191414",
+    "theme_color": "#1DB954",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/static/img/favicon.gif",
+            
+            "type": "image/gif",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": ["music", "analytics", "entertainment"],
+    "screenshots": [],
+    "related_applications": [],
+    "prefer_related_applications": false,
+    "shortcuts": [
+        {
+            "name": "Dashboard",
+            "short_name": "Dashboard",
+            "description": "View your music analytics dashboard",
+            "url": "/app/"
+        },
+        {
+            "name": "Playlists",
+            "short_name": "Playlists",
+            "description": "Analyze your playlists",
+            "url": "/app/playlists/"
+        }
+    ]
+}

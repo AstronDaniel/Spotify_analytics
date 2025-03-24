@@ -1,0 +1,265 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% load music_tags %}
+
+{% block title %}Your Playlists - Spotify Analytics{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="mb-0">Your Playlists</h1>
+            <p class="text-muted">Analyze and discover insights about your Spotify playlists</p>
+        </div>
+        <div class="col-auto">
+            <div class="btn-group">
+                <button type="button" 
+                        class="btn btn-outline-spotify active"
+                        onclick="filterPlaylists('all')">
+                    All
+                </button>
+                <button type="button" 
+                        class="btn btn-outline-spotify"
+                        onclick="filterPlaylists('analyzed')">
+                    Analyzed
+                </button>
+                <button type="button" 
+                        class="btn btn-outline-spotify"
+                        onclick="filterPlaylists('not-analyzed')">
+                    Not Analyzed
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search & Sort -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="input-group">
+                <span class="input-group-text bg-spotify text-white">
+                    <i class="fas fa-search"></i>
+                </span>
+                <input type="text" 
+                       class="form-control" 
+                       placeholder="Search playlists..."
+                       id="playlistSearch"
+                       oninput="filterPlaylists()">
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="input-group">
+                <span class="input-group-text bg-spotify text-white">
+                    <i class="fas fa-sort"></i>
+                </span>
+                <select class="form-select" 
+                        id="playlistSort"
+                        onchange="sortPlaylists()">
+                    <option value="name">Name</option>
+                    <option value="tracks">Track Count</option>
+                    <option value="recent">Recently Updated</option>
+                    <option value="analyzed">Analysis Date</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- Playlists Grid -->
+    <div class="row g-4" id="playlistsGrid">
+        {% for playlist in playlists %}
+        <div class="col-md-6 col-lg-4 playlist-item"
+             data-analyzed="{{ playlist.is_analyzed|yesno:'true,false' }}"
+             data-name="{{ playlist.name|lower }}"
+             data-tracks="{{ playlist.tracks_total }}"
+             data-updated="{{ playlist.last_updated|date:'U' }}"
+             data-analyzed-date="{{ playlist.analysis_date|date:'U'|default:0 }}">
+            
+            <div class="card h-100">
+                <!-- Playlist Image -->
+                <div class="position-relative">
+                    <img src="{{ playlist.image_url|default:'/static/img/default-playlist.png' }}"
+                         class="card-img-top"
+                         alt="{{ playlist.name }}">
+                    {% if playlist.is_analyzed %}
+                    <span class="badge bg-success position-absolute top-0 end-0 m-2">
+                        <i class="fas fa-chart-bar me-1"></i>Analyzed
+                    </span>
+                    {% endif %}
+                </div>
+
+                <!-- Playlist Info -->
+                <div class="card-body">
+                    <h2 class="h5 card-title mb-3">{{ playlist.name }}</h2>
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            {{ playlist.tracks_total }} tracks ·
+                            {{ playlist.total_duration_ms|format_duration_long }}
+                        </small>
+                    </div>
+
+                    {% if playlist.is_analyzed %}
+                    <div class="mb-3">
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="p-2 bg-light rounded">
+                                    <small class="d-block text-muted">Top Genre</small>
+                                    <strong>{{ playlist.top_genre }}</strong>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="p-2 bg-light rounded">
+                                    <small class="d-block text-muted">Avg. Popularity</small>
+                                    <strong>{{ playlist.avg_popularity|floatformat:0 }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Action Buttons -->
+                    <div class="d-grid gap-2">
+                        {% if playlist.is_analyzed %}
+                        <a href="{% url 'core:playlist-detail' playlist.id %}" 
+                           class="btn btn-spotify">
+                            <i class="fas fa-chart-line me-2"></i>View Analysis
+                        </a>
+                        {% else %}
+                        <button onclick="analyzePlaylist('{{ playlist.id }}')"
+                                class="btn btn-outline-spotify">
+                            <i class="fas fa-magic me-2"></i>Analyze Playlist
+                        </button>
+                        {% endif %}
+                        <a href="{{ playlist.spotify_url }}" 
+                           class="btn btn-outline-spotify"
+                           target="_blank">
+                            <i class="fab fa-spotify me-2"></i>Open in Spotify
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12 text-center py-5">
+            <div class="mb-4">
+                <i class="fas fa-music fa-3x text-muted"></i>
+            </div>
+            <h3>No Playlists Found</h3>
+            <p class="text-muted">
+                We couldn't find any playlists in your Spotify account. Try creating some playlists first.
+            </p>
+            <a href="https://open.spotify.com/" class="btn btn-spotify" target="_blank">
+                <i class="fab fa-spotify me-2"></i>Open Spotify
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Wait for spotifyApi to be available
+document.addEventListener('DOMContentLoaded', function() {
+    // If spotifyApi is not defined, wait for it to be loaded
+    if (!window.spotifyApi) {
+        document.addEventListener('mainJsLoaded', function() {
+            initializePlaylists();
+        });
+    } else {
+        initializePlaylists();
+    }
+});
+
+function initializePlaylists() {
+    // Initialize tooltips
+    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltips.forEach(tooltip => new bootstrap.Tooltip(tooltip));
+}
+
+async function analyzePlaylist(playlistId) {
+    try {
+        if (!window.spotifyApi) {
+            throw new Error('Spotify API not initialized');
+        }
+        
+        // Show loading state on the button
+        const button = event.target;
+        const originalText = button.innerHTML;
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Analyzing...';
+        
+        const response = await window.spotifyApi.getPlaylistAnalysis(playlistId);
+        if (response.ok) {
+            window.location.href = `/playlists/${playlistId}/`;
+        } else {
+            throw new Error('Failed to analyze playlist');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Failed to analyze playlist. Please try again.');
+        // Reset button state
+        if (button) {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+    }
+}
+
+function filterPlaylists(filter) {
+    const items = document.querySelectorAll('.playlist-item');
+    
+    items.forEach(item => {
+        switch(filter) {
+            case 'analyzed':
+                item.style.display = item.dataset.analyzed === 'true' ? '' : 'none';
+                break;
+            case 'not-analyzed':
+                item.style.display = item.dataset.analyzed === 'false' ? '' : 'none';
+                break;
+            default:
+                item.style.display = '';
+        }
+    });
+
+    // Update active button
+    document.querySelectorAll('.btn-group .btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+}
+
+function filterBySearch(query) {
+    const items = document.querySelectorAll('.playlist-item');
+    const searchQuery = query.toLowerCase();
+    
+    items.forEach(item => {
+        const name = item.dataset.name.toLowerCase();
+        item.style.display = name.includes(searchQuery) ? '' : 'none';
+    });
+}
+
+function sortPlaylists() {
+    const grid = document.getElementById('playlistsGrid');
+    const sortBy = document.getElementById('playlistSort').value;
+    const items = Array.from(document.querySelectorAll('.playlist-item'));
+
+    items.sort((a, b) => {
+        switch(sortBy) {
+            case 'name':
+                return a.dataset.name.localeCompare(b.dataset.name);
+            case 'tracks':
+                return parseInt(b.dataset.tracks) - parseInt(a.dataset.tracks);
+            case 'recent':
+                return parseInt(b.dataset.updated) - parseInt(a.dataset.updated);
+            case 'analyzed':
+                return parseInt(b.dataset.analyzedDate) - parseInt(a.dataset.analyzedDate);
+        }
+    });
+
+    // Clear and refill grid
+    grid.innerHTML = '';
+    items.forEach(item => grid.appendChild(item));
+}
+</script>
+{% endblock %}
