@@ -14,8 +14,8 @@ urlpatterns = [
     # Add the correct callback URL pattern
     path('core/spotify/callback/', RedirectView.as_view(pattern_name='spotify-callback'), name='spotify-callback-redirect'),
     
-    # Core app URLs - using include with explicit app_name as a tuple
-    path('', include(('core.urls', 'core'), namespace='core')),
+    # Core app URLs
+    path('', include('core.urls', namespace='core')),
     
     # API endpoints
     path('api/', include('api.urls', namespace='api')),

@@ -2,6 +2,10 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 import datetime
+import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 class User(AbstractUser):
     """Custom user model with Spotify integration."""
@@ -32,6 +36,36 @@ class User(AbstractUser):
         # Convert token expiry from seconds to datetime
         expiry_time = timezone.now() + datetime.timedelta(seconds=self.spotify_token_expires_at)
         return timezone.now() >= expiry_time
+
+    def refresh_spotify_token(self):
+        """Refresh the Spotify access token if it's expired."""
+        if not self.is_spotify_linked:
+            return False
+            
+        # Only refresh if token is expired or about to expire
+        current_time = int(time.time())
+        if self.spotify_token_expires_at and current_time < self.spotify_token_expires_at - 60:
+            return True  # Token is still valid
+            
+        try:
+            from core.spotify import SpotifyClient
+            spotify = SpotifyClient(
+                access_token=self.spotify_access_token,
+                refresh_token=self.spotify_refresh_token
+            )
+            token_data = spotify.refresh_auth_token()  # Using the new method name
+            
+            # Update tokens
+            self.spotify_access_token = token_data['access_token']
+            if 'refresh_token' in token_data:
+                self.spotify_refresh_token = token_data['refresh_token']
+            self.spotify_token_expires_at = int(time.time()) + token_data['expires_in']
+            self.save()
+            
+            return True
+        except Exception as e:
+            logger.error(f"Failed to refresh Spotify token: {str(e)}")
+            return False
 
     def spotify_disconnect(self):
         """Remove Spotify connection."""

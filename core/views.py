@@ -8,7 +8,6 @@ from django.contrib import messages
 from django.core.exceptions import SuspiciousOperation
 from django.http import HttpResponseBadRequest, JsonResponse
 import logging
-import time
 from .spotify import SpotifyClient
 from analytics.services import AnalyticsService
 
