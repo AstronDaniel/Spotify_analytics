@@ -37,7 +37,7 @@ A comprehensive analytics platform that provides deep insights into music prefer
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/spotify-analytics.git
+git clone https://github.com/AstronDaniel /spotify-analytics.git
 cd spotify-analytics
 ```
 
