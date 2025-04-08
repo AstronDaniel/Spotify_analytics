@@ -53,7 +53,7 @@ class User(AbstractUser):
                 access_token=self.spotify_access_token,
                 refresh_token=self.spotify_refresh_token
             )
-            token_data = spotify.refresh_auth_token()  # Using the new method name
+            token_data = spotify.refresh_token()  # This method doesn't take any arguments
             
             # Update tokens
             self.spotify_access_token = token_data['access_token']

@@ -1,7 +1,8 @@
 from django.urls import path
 from .. import views
 
-# No app_name here to avoid namespace conflicts
+app_name = 'core'  # Set app_name to match the main app namespace
+
 urlpatterns = [
     # Spotify auth endpoints
     path('callback/', views.SpotifyCallbackView.as_view(), name='spotify-callback'),

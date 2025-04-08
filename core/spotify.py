@@ -200,8 +200,13 @@ class SpotifyClient:
         """Handle 401 Unauthorized responses by refreshing the access token."""
         if response.status_code == 401:
             try:
-                self.refresh_token()
-                return True
+                new_token_data = self.refresh_token()
+                if new_token_data:
+                    # Update session headers with new token
+                    self.session.headers.update({
+                        'Authorization': f'Bearer {new_token_data["access_token"]}'
+                    })
+                    return True
             except Exception as e:
                 logger.error(f"Error refreshing token: {str(e)}")
                 return False

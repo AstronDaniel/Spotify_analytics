@@ -211,6 +211,7 @@ class SpotifyCallbackView(RedirectView):
             user.spotify_refresh_token = token_info['refresh_token']
             
             # Store token expiration time as an absolute timestamp instead of relative seconds
+            import time
             user.spotify_token_expires_at = int(time.time()) + token_info['expires_in']
             
             user.spotify_profile_image = profile.get('images', [{}])[0].get('url', '')

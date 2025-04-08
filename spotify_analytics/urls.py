@@ -9,13 +9,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     
     # Spotify callback and auth routes - match redirect URI exactly
-    path('spotify/', include('core.urls.spotify_urls')),  # Now points to the correct module
-    
-    # Add the correct callback URL pattern
-    path('core/spotify/callback/', RedirectView.as_view(pattern_name='spotify-callback'), name='spotify-callback-redirect'),
+    path('spotify/', include('core.urls.spotify_urls', namespace='spotify')),
     
     # Core app URLs
-    path('', include('core.urls', namespace='core')),
+    path('', include('core.urls.core_urls', namespace='core')),
     
     # API endpoints
     path('api/', include('api.urls', namespace='api')),
