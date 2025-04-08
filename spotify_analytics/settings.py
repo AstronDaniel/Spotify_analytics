@@ -101,7 +101,7 @@ AUTH_USER_MODEL = 'users.User'
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Africa/Kampala'  # Changed to East Africa timezone for Uganda
 USE_I18N = True
 USE_TZ = True
 

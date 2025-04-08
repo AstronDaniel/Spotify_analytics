@@ -224,33 +224,27 @@ class SpotifyCallbackView(RedirectView):
             messages.error(self.request, "Failed to complete authentication. Please try again.")
             return reverse('core:home')
 
-class SpotifyLogoutView(LoginRequiredMixin, RedirectView):
+class SpotifyLogoutView(RedirectView):
     """Handle Spotify logout."""
     
     def get_redirect_url(self, *args, **kwargs):
-        try:
-            user = self.request.user
-            user.spotify_access_token = None
-            user.spotify_refresh_token = None
-            user.spotify_token_expires_at = None
-            user.save()
-            
-            messages.success(self.request, "Successfully disconnected from Spotify.")
-        except Exception as e:
-            logger.error(f"Error during Spotify logout: {str(e)}")
-            messages.error(self.request, "Error disconnecting from Spotify.")
-            
+        from django.contrib.auth import logout
+        logout(self.request)
+        messages.success(self.request, "You have been logged out successfully.")
         return reverse('core:home')
 
 # Error handlers
 def page_not_found(request, exception):
+    """Handle 404 errors."""
     return render(request, '404.html', status=404)
 
 def server_error(request):
+    """Handle 500 errors."""
     return render(request, '500.html', status=500)
 
 def service_unavailable(request, exception=None):
-    return render(request, 'offline.html', status=503)
+    """Handle 503 errors."""
+    return render(request, '503.html', status=503)
 
 # AJAX endpoints
 def check_spotify_connection(request):
