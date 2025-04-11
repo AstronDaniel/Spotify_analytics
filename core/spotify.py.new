@@ -1,0 +1,328 @@
+from django.conf import settings
+import requests
+import base64
+import logging
+from urllib.parse import quote, urlencode
+
+logger = logging.getLogger(__name__)
+
+class SpotifyClient:
+    AUTH_URL = 'https://accounts.spotify.com/authorize'
+    TOKEN_URL = 'https://accounts.spotify.com/api/token'
+    API_BASE_URL = 'https://api.spotify.com/v1'
+    
+    SCOPES = [
+        'user-read-private',
+        'user-read-email',
+        'playlist-read-private',
+        'playlist-read-collaborative',
+        'user-top-read',
+        'user-read-recently-played',
+        'user-library-read'
+    ]
+
+    @classmethod
+    def get_auth_url(cls):
+        """Generate OAuth URL for Spotify login."""
+        try:
+            auth_params = {
+                'client_id': settings.SPOTIFY_CLIENT_ID,
+                'response_type': 'code',
+                'redirect_uri': settings.SPOTIFY_REDIRECT_URI,
+                'scope': settings.SPOTIFY_SCOPE,
+                'show_dialog': True  # Always show the authorization dialog to allow different users to log in
+            }
+            # Construct URL for Spotify authorization
+            auth_url = f"{cls.AUTH_URL}?{urlencode(auth_params)}"
+            return auth_url
+        except Exception as e:
+            logger.error(f"Error generating Spotify auth URL: {str(e)}")
+            raise
+
+    @classmethod
+    def get_client_credentials(cls):
+        """
+        Get client credentials access token for server-to-server API requests.
+        This flow doesn't require user authorization and is suitable for
+        accessing public data or data that doesn't require user permissions.
+        """
+        try:
+            # Create authorization header
+            auth_header = base64.b64encode(
+                f"{settings.SPOTIFY_CLIENT_ID}:{settings.SPOTIFY_CLIENT_SECRET}".encode()
+            ).decode()
+
+            headers = {
+                'Authorization': f'Basic {auth_header}',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+
+            data = {
+                'grant_type': 'client_credentials'
+            }
+            
+            logger.debug("Requesting client credentials token from Spotify")
+            response = requests.post(cls.TOKEN_URL, headers=headers, data=data)
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as e:
+                logger.error(f"Spotify API Error: {e.response.status_code} - {e.response.text}")
+                if e.response.status_code == 403:
+                    raise PermissionError("Insufficient Spotify API permissions or unauthorized user")
+                raise
+            
+            token_info = response.json()
+            logger.debug("Successfully received client credentials token")
+            return token_info['access_token']
+            
+        except Exception as e:
+            logger.error(f"Error getting client credentials: {str(e)}")
+            raise
+
+    @classmethod
+    def get_tokens(cls, auth_code):
+        """Exchange authorization code for access and refresh tokens."""
+        try:
+            # Create authorization header
+            auth_header = base64.b64encode(
+                f"{settings.SPOTIFY_CLIENT_ID}:{settings.SPOTIFY_CLIENT_SECRET}".encode()
+            ).decode()
+
+            headers = {
+                'Authorization': f'Basic {auth_header}',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+
+            # Prepare request data
+            data = {
+                'grant_type': 'authorization_code',
+                'code': auth_code,
+                'redirect_uri': settings.SPOTIFY_REDIRECT_URI
+            }
+
+            logger.debug("Requesting tokens from Spotify")
+            response = requests.post(cls.TOKEN_URL, headers=headers, data=data)
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as e:
+                logger.error(f"Spotify API Error: {e.response.status_code} - {e.response.text}")
+                if e.response.status_code == 403:
+                    raise PermissionError("Insufficient Spotify API permissions or unauthorized user")
+                raise
+            
+            tokens = response.json()
+            logger.debug("Successfully received tokens from Spotify")
+            return tokens
+
+        except Exception as e:
+            logger.error(f"Error getting Spotify tokens: {str(e)}")
+            raise
+
+    def __init__(self, access_token=None, refresh_token=None):
+        """Initialize the client with optional access and refresh tokens."""
+        self.access_token = access_token
+        self.refresh_token = refresh_token
+        self.session = requests.Session()
+        if access_token:
+            self.session.headers.update({
+                'Authorization': f'Bearer {access_token}',
+                'Content-Type': 'application/json'
+            })
+
+    def refresh_token(self):
+        """Refresh the access token using the refresh token."""
+        if not self.refresh_token:
+            logger.error("No refresh token available")
+            return None
+            
+        try:
+            logger.debug("Refreshing access token")
+            
+            # Create authorization header
+            auth_header = base64.b64encode(
+                f"{settings.SPOTIFY_CLIENT_ID}:{settings.SPOTIFY_CLIENT_SECRET}".encode()
+            ).decode()
+            
+            headers = {
+                'Authorization': f'Basic {auth_header}',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+            
+            data = {
+                'grant_type': 'refresh_token',
+                'refresh_token': self.refresh_token
+            }
+            
+            response = requests.post(self.TOKEN_URL, headers=headers, data=data)
+            response.raise_for_status()
+            
+            token_data = response.json()
+            
+            # Update instance with new token
+            self.access_token = token_data['access_token']
+            # Update session headers
+            self.session.headers.update({
+                'Authorization': f'Bearer {self.access_token}'
+            })
+            
+            # If a new refresh token was provided, update it
+            if 'refresh_token' in token_data:
+                self.refresh_token = token_data['refresh_token']
+                
+            logger.debug("Successfully refreshed access token")
+            return token_data
+            
+        except Exception as e:
+            logger.error(f"Error refreshing token: {str(e)}")
+            return None
+
+    def get_user_profile(self):
+        """Get the current user's Spotify profile."""
+        try:
+            logger.debug("Fetching user profile from Spotify")
+            response = self.session.get(f'{self.API_BASE_URL}/me')
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as e:
+                logger.error(f"Spotify API Error: {e.response.status_code} - {e.response.text}")
+                if e.response.status_code == 403:
+                    raise PermissionError("Insufficient Spotify API permissions or unauthorized user")
+                elif e.response.status_code == 401 and self.refresh_token:
+                    # Try to refresh the token and retry
+                    token_data = self.refresh_token()
+                    if token_data:
+                        # Retry the request
+                        response = self.session.get(f'{self.API_BASE_URL}/me')
+                        response.raise_for_status()
+                        return response.json()
+                    else:
+                        raise PermissionError("Authentication failed and token refresh was unsuccessful")
+                raise
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting user profile: {str(e)}")
+            raise
+
+    def get_user_playlists(self, limit=50, offset=0):
+        """Get the current user's playlists."""
+        try:
+            logger.debug(f"Fetching user playlists (limit={limit}, offset={offset})")
+            response = self.session.get(
+                f'{self.API_BASE_URL}/me/playlists',
+                params={'limit': limit, 'offset': offset}
+            )
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as e:
+                logger.error(f"Spotify API Error: {e.response.status_code} - {e.response.text}")
+                if e.response.status_code == 403:
+                    raise PermissionError("Insufficient Spotify API permissions or unauthorized user")
+                elif e.response.status_code == 401 and self.refresh_token:
+                    # Try to refresh the token and retry
+                    token_data = self.refresh_token()
+                    if token_data:
+                        # Retry the request
+                        response = self.session.get(
+                            f'{self.API_BASE_URL}/me/playlists',
+                            params={'limit': limit, 'offset': offset}
+                        )
+                        response.raise_for_status()
+                        return response.json()
+                    else:
+                        raise PermissionError("Authentication failed and token refresh was unsuccessful")
+                raise
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting user playlists: {str(e)}")
+            raise
+
+    def get_recently_played(self, limit=20):
+        """Get user's recently played tracks."""
+        try:
+            logger.debug(f"Fetching recently played tracks (limit={limit})")
+            response = self.session.get(
+                f'{self.API_BASE_URL}/me/player/recently-played',
+                params={'limit': limit}
+            )            
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as e:
+                logger.error(f"Spotify API Error: {e.response.status_code} - {e.response.text}")
+                if e.response.status_code == 403:
+                    logger.warning("Permission issue detected. This might be a scope problem or account restriction.")
+                    # Instead of failing, return empty result with error info
+                    return {
+                        'items': [],
+                        'error': 'permission_denied',
+                        'message': 'This account may not have the required permissions or history'
+                    }
+                elif e.response.status_code == 401 and self.refresh_token:
+                    # Try to refresh the token and retry
+                    token_data = self.refresh_token()
+                    if token_data:
+                        # Retry the request
+                        response = self.session.get(
+                            f'{self.API_BASE_URL}/me/player/recently-played',
+                            params={'limit': limit}
+                        )
+                        response.raise_for_status()
+                        return response.json()
+                    else:
+                        # If refresh didn't work
+                        return {
+                            'items': [],
+                            'error': 'authentication_error',
+                            'message': 'Authentication failed. Please log in again.'
+                        }
+                raise
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting recently played tracks: {str(e)}")
+            # Return an error response rather than raising an exception
+            # This makes the API more resilient to different account types
+            return {
+                'items': [],
+                'error': 'api_error',
+                'message': f'Error accessing Spotify API: {str(e)}'
+            }
+
+    def get_user_top_artists(self, limit=20, offset=0, time_range='medium_term'):
+        """Get user's top artists."""
+        try:
+            logger.debug(f"Fetching top artists (limit={limit}, offset={offset}, time_range={time_range})")
+            response = self.session.get(
+                f'{self.API_BASE_URL}/me/top/artists',
+                params={
+                    'limit': limit,
+                    'offset': offset,
+                    'time_range': time_range
+                }
+            )
+            try:
+                response.raise_for_status()
+            except requests.HTTPError as e:
+                logger.error(f"Spotify API Error: {e.response.status_code} - {e.response.text}")
+                if e.response.status_code == 403:
+                    raise PermissionError("Insufficient Spotify API permissions or unauthorized user")
+                elif e.response.status_code == 401 and self.refresh_token:
+                    # Try to refresh the token and retry
+                    token_data = self.refresh_token()
+                    if token_data:
+                        # Retry the request
+                        response = self.session.get(
+                            f'{self.API_BASE_URL}/me/top/artists',
+                            params={
+                                'limit': limit,
+                                'offset': offset,
+                                'time_range': time_range
+                            }
+                        )
+                        response.raise_for_status()
+                        return response.json()
+                    else:
+                        raise PermissionError("Authentication failed and token refresh was unsuccessful")
+                raise
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting top artists: {str(e)}")
+            raise

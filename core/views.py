@@ -168,28 +168,41 @@ class SpotifyCallbackView(RedirectView):
     """Handle Spotify OAuth callback."""
     
     def get_redirect_url(self, *args, **kwargs):
+        print("\n[DEBUG] Spotify callback received")
+        print(f"[DEBUG] Request parameters: {dict(self.request.GET)}")
+        
         error = self.request.GET.get('error')
         if error:
             logger.error(f"Spotify auth error: {error}")
+            print(f"[ERROR] Spotify auth error: {error}")
             messages.error(self.request, f"Authentication failed: {error}")
             return reverse('core:home')
 
         code = self.request.GET.get('code')
         if not code:
             logger.error("No authorization code received")
+            print(f"[ERROR] No authorization code received")
             messages.error(self.request, "Authentication failed: No authorization code received")
             return reverse('core:home')
 
         try:
             logger.info("Processing Spotify callback")
+            print(f"[DEBUG] Processing Spotify callback with auth code: {code[:5]}...{code[-5:]}")
+            
             # Get tokens using the authorization code
+            print(f"[DEBUG] Exchanging authorization code for tokens")
             token_info = SpotifyClient.get_tokens(code)
             
             # Initialize Spotify client with access token
+            print(f"[DEBUG] Initializing Spotify client with access token")
             spotify = SpotifyClient(token_info['access_token'])
             
             # Get user profile
+            print(f"[DEBUG] Fetching user profile")
             profile = spotify.get_user_profile()
+            print(f"[DEBUG] Successfully retrieved profile for: {profile.get('display_name', 'Unknown')} (ID: {profile.get('id', 'Unknown')})")
+            print(f"[DEBUG] User type: {profile.get('type', 'Unknown')}")
+            print(f"[DEBUG] User product: {profile.get('product', 'Unknown')}")
             
             # If user is not authenticated, create or get user and log them in
             if not self.request.user.is_authenticated:
@@ -214,7 +227,9 @@ class SpotifyCallbackView(RedirectView):
             import time
             user.spotify_token_expires_at = int(time.time()) + token_info['expires_in']
             
-            user.spotify_profile_image = profile.get('images', [{}])[0].get('url', '')
+            # Handle case where user might not have any profile images
+            images = profile.get('images', [])
+            user.spotify_profile_image = images[0].get('url', '') if images else ''
             user.save()
 
             messages.success(self.request, "Successfully connected to Spotify!")
